@@ -1,0 +1,267 @@
+import wollok.game.*
+import math.*
+
+object world {
+	const cell_size = 30
+	const size = new Vec2(x=9, y=9)
+	const raysCount = 50
+	const FOV = 50
+	const raysAngleIncrement = (FOV/raysCount).roundUp()
+	const rays = []
+	const level = [
+		[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+		[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+		[1, 0, 0, 1, 1, 0, 0, 0, 0, 1],
+		[1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+	]
+	var angle = 90
+	const walls = []
+	const player = new Player(x=40, y=40, width=20, height=20)
+	
+	method getFov()= FOV
+	
+	method construirMapa(){
+		(0..9).forEach({y => 
+			(0..9).forEach({x =>
+				const tipo = level.get(y).get(x)
+				if (tipo == 1) {
+					walls.add(new Entidad(x=x, y=y, width=cell_size, height=cell_size))
+				}
+			})
+		})
+	}
+	
+	method turn() {
+		angle = (angle + 24) % 360
+		//console.println(angle)
+		//player.y(player.y() - 5)
+		//console.println("angle "+angle)
+	
+		
+	}
+	
+	method getDistances(){
+		const listOfDistances = []
+		rays.forEach({ray =>
+			const newAngle = angle - (FOV/2).truncate(0)
+			ray.x(player.x())
+			ray.y(player.y())
+			ray.setAngle(newAngle)
+			const distance = ray.cast()
+			//console.println(distance)
+			listOfDistances.add(distance)
+		})
+		return listOfDistances
+	}
+	
+	method makeRays() {
+		const initialAngle = angle - (FOV/2).truncate(0)
+		(0..raysCount).forEach({elem =>
+			rays.add(new Ray(angle=initialAngle, cell_size=cell_size, level=level, world_size=size, x=player.x(), y=player.y(), rayAngle=raysAngleIncrement*elem))
+		})
+		
+	}
+
+}
+
+object abc {
+	var lines = []
+	
+	method init() {
+		game.width(50)
+  		game.height(60)
+  		game.cellSize(8)
+  		game.title("Juego")
+  		game.boardGround("background.png")
+  		
+  		world.construirMapa()
+  		world.makeRays()
+  		
+		(49..0).forEach({elem => 
+			self.makeLine(elem)
+		}) 
+		
+		keyboard.d().onPressDo({ 
+			world.turn()
+			self.updateLines(world.getDistances())
+		})
+		//game.onTick(50, "game", { self.updateLines(world.getDistances())})
+		
+		game.start()
+	}
+	
+	method updateLines(listOfDistances) {
+		const wallHeight = 30
+		const projectionPlainDistance = (game.width() /2) / math.tan((world.getFov()/2).truncate(0))
+		(0..49).forEach({elem => 
+			const distance = listOfDistances.get(elem)
+			const projectedWallHeight = ((wallHeight / distance ) * projectionPlainDistance)
+			const imageNumber = projectedWallHeight.truncate(0).min(59)
+			const line = lines.get(elem)
+			//console.println(imageNumber)
+			const posY = game.height().div(2) - imageNumber.div(2)
+			line.image("assets/wall-" + imageNumber.toString() + ".jpg")
+			line.position(game.at(line.position().x(), posY))
+		})
+	}
+	
+	method makeLine(elem){
+			const profundidad = 0.randomUpTo(59).truncate(0)
+			const posY = game.height().div(2) - profundidad.div(2)
+			const line = new Linea(position=game.at(elem, posY), image="assets/wall-" + profundidad.toString() + ".jpg")
+			lines.add(line)
+			game.addVisual(line)
+	}
+
+}
+
+class Linea {
+	var property position
+	var property image
+}
+
+class Entidad {
+	var property x
+	var property y
+	var property width
+	var property height
+}
+
+class Player inherits Entidad {
+	var angle = 0
+}
+
+class Ray {
+	const rayAngle
+	const cell_size
+	const level
+	const world_size
+	
+	var property x
+	var property y
+	var angle
+	
+	method setAngle(na){
+		angle = ((na + rayAngle) % 360).abs()
+	}
+	
+	method cast(){
+		var collidePoint = new Vec2(x=1, y=1)
+		var direction = new Vec2(x=1, y=1)
+		var horizontalHit = false
+		var sourcePos = new Vec2(x=x, y=y)
+		
+		// Que direccion se mueve el rayo
+		if (angle > 180) {
+			direction.y(1)
+		}
+		if(angle > 90 && angle < 270){
+			direction.x(-1)
+		}
+		
+		// Colision horizontal
+		collidePoint.y((y / cell_size).truncate(0) * cell_size)
+		
+		// Si apunta para abajo incrementamos una celda
+		if (direction.y() == 1) {
+			collidePoint.y(collidePoint.y() + cell_size)
+		}
+		
+		var adjacent = (collidePoint.y() - y) / (math.tan(angle)+0.01)
+		collidePoint.x(collidePoint.x() + adjacent)
+		
+		// Calculo de distancia de cada paso
+		var step = new Vec2(x=cell_size / (math.tan(angle)+0.01), y=cell_size)
+		
+		// Si apunta hacia arriba invertimos el paso en y
+		if(direction.y() == -1) {
+			step.y(-step.y())
+		}
+		
+		// El paso en X coherente ????noentiendo
+		if ((direction.x() == -1 && step.x() > 0) || (direction.x() == 1 && step.x() < 0)){
+			step.x(-step.x())
+		}
+
+		var siguientePos = new Vec2(x=collidePoint.x(), y=collidePoint.y())
+		if(direction.y() == 1) {
+			siguientePos.y(siguientePos.y() - 1)
+		}
+		
+		
+		var hCollidePoint = self.stepCollide(siguientePos, step)
+		
+		// Colision vertical
+		collidePoint.x((x / cell_size).truncate(0) * cell_size)
+		
+		// Si apunta hacia la derecha incrementamos una celda
+		if (direction.x() == -1) {
+			collidePoint.x(collidePoint.x() + cell_size)
+		}
+		var opposite  = (collidePoint.x() - x) * math.tan(angle)
+		collidePoint.y( y - opposite)
+		// Calculo de distancia en cada paso
+		step = new Vec2(x=cell_size, y=cell_size * math.tan(angle))
+		
+		// El paso en Y coherente ????noentiendo
+		if ((direction.y() == -1 && step.y() > 0) || (direction.y() == 1 && step.y() < 0)){
+			step.y(-step.y())
+		}
+		siguientePos = new Vec2(x=collidePoint.x(), y=collidePoint.y())
+		if(direction.x() == -1) {
+			siguientePos.x(siguientePos.x() + 1)
+		}
+		var vCollidePoint = self.stepCollide(siguientePos, step)
+		
+		var hDistance = sourcePos.distanceWith(hCollidePoint)
+		var vDistance = sourcePos.distanceWith(vCollidePoint)
+
+		//console.println(hDistance)
+		if (hDistance < vDistance) {
+			//console.println(hDistance)
+			return hDistance
+		} else {
+			//console.println(vDistance)
+			return vDistance
+		}
+		
+	}
+	
+	method stepCollide(siguiente, step) {
+	
+		const cell = new Vec2(
+			x=(siguiente.x().div(cell_size)).truncate(0),
+			y=(siguiente.y().div(cell_size)).truncate(0)
+		)
+		
+		if (self.collideWithAnyWall(cell)) {
+			return siguiente
+		} else {
+			return self.stepCollide(
+				new Vec2(x=siguiente.x() + step.x(), y=siguiente.y() + step.y()),
+				step
+			)
+		}
+		
+	}
+	
+	method outsideWorld(cell) {
+		return cell.x() < 0 || cell.x() > world_size.x() || cell.y() < 0 || cell.y() > world_size.y()
+	}
+	
+	method collideWithAnyWall(cell) {
+		//return true
+		return self.outsideWorld(cell) || (level.get(cell.y()).get(cell.x()) != 0)
+	}
+}
+
+
+program juego {
+	abc.init()
+}
