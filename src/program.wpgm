@@ -2,7 +2,7 @@ import wollok.game.*
 import math.*
 
 object world {
-	const cell_size = 30
+	const cell_size = 40
 	const size = new Vec2(x=9, y=9)
 	const raysCount = 30
 	const FOV = 60
@@ -11,19 +11,19 @@ object world {
 	const level = [ // Este es el mapa! Los 1 son paredes. El jugador inicia en medio del mapa.
 		[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+		[1, 0, 0, 0, 0, 0, 1, 1, 0, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 1, 1, 0, 0, 0, 0, 1],
+		[1, 0, 0, 1, 1, 0, 0, 0, 0, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-		[1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
-		[1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
 		[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		// Pase por ese pasillo 
 	]
-	var angle = 1
+	var angle = 45
 	const walls = []
-	const player = new Player(x=cell_size*4, y=cell_size*4, width=20, height=20)
+	const player = new Player(x=cell_size*1, y=cell_size*1, width=20, height=20)
 	
 	method getFov()= FOV
 	
@@ -39,14 +39,14 @@ object world {
 	}
 	
 	method turnLeft() {
-		angle = math.normalizeAngle(angle + 20)
+		angle = math.normalizeAngle(angle + 12)
 		//console.println(angle)
 		//player.y(player.y() - 5)
 		console.println("cos and sin " + math.cos(angle) + " " + math.sin(angle))
 		console.println("player- angle: "+angle+" pos: "+player.x()+" "+player.y())
 	}
 	method turnRight() {
-		angle = math.normalizeAngle(angle - 20)
+		angle = math.normalizeAngle(angle - 12)
 		//console.println(angle)
 		//player.y(player.y() - 5)
 		console.println("cos and sin " + math.cos(angle) + " " + math.sin(angle))
@@ -54,8 +54,8 @@ object world {
 	}
 	
 	method forward() {
-		var newX = player.x() + 10*math.cos(angle)
-		var newY = player.y() + 10*math.sin(angle)
+		var newX = player.x() + 20*math.cos(angle)
+		var newY = player.y() + 20*math.sin(angle)
 		
 		
 		var cell = new Vec2(x=(newX/cell_size).truncate(0), y=(newY/cell_size).truncate(0))
