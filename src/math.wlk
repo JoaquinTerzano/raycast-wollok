@@ -821,7 +821,7 @@ object math {
 		19.081137,
 		28.636253,
 		57.289962,
-		16331239353195370.000000,
+		57.289962,
 		-57.289962,
 		-28.636253,
 		-19.081137,
@@ -1098,6 +1098,15 @@ object math {
 	method sin(degree)= sinus.get(degree)
 	method tan(degree)= tangente.get(degree)
 	method rad2degree(rad)= (rad * (180 / 2*PI)).truncate(0)
+	method normalizeAngle(degree){
+		var angle = degree % 360
+	
+		if(angle < 0){
+			angle = 360 + angle	//si es negativo damos toda la vuelta en el otro sentido
+		}
+		
+		return angle
+	}
 	
 }
 
@@ -1105,8 +1114,8 @@ class Vec2 {
 	var property x
 	var property y
 	method distanceWith(vec) {
-		const differenceX = (x - vec.x()).abs()
-		const differenceY  = (y - vec.y()).abs()
-		return (differenceX.square() + differenceY.square()).squareRoot() 
+		const differenceX = (x - vec.x())
+		const differenceY  = (y - vec.y())
+		return (differenceX*differenceX + differenceY*differenceY).squareRoot() 
 	}
 }

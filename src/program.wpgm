@@ -4,25 +4,26 @@ import math.*
 object world {
 	const cell_size = 30
 	const size = new Vec2(x=9, y=9)
-	const raysCount = 50
-	const FOV = 50
+	const raysCount = 30
+	const FOV = 60
 	const raysAngleIncrement = (FOV/raysCount).roundUp()
 	const rays = []
-	const level = [
+	const level = [ // Este es el mapa! Los 1 son paredes. El jugador inicia en medio del mapa.
 		[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-		[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-		[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-		[1, 0, 0, 1, 1, 0, 0, 0, 0, 1],
-		[1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-		[1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+		[1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
+		[1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
 		[1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
 		[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+		// Pase por ese pasillo 
 	]
-	var angle = 90
+	var angle = 1
 	const walls = []
-	const player = new Player(x=40, y=40, width=20, height=20)
+	const player = new Player(x=cell_size*4, y=cell_size*4, width=20, height=20)
 	
 	method getFov()= FOV
 	
@@ -31,29 +32,51 @@ object world {
 			(0..9).forEach({x =>
 				const tipo = level.get(y).get(x)
 				if (tipo == 1) {
-					walls.add(new Entidad(x=x, y=y, width=cell_size, height=cell_size))
+					walls.add(new Entidad(x=cell_size*5, y=cell_size*5, width=cell_size, height=cell_size))
 				}
 			})
 		})
 	}
 	
-	method turn() {
-		angle = (angle + 24) % 360
+	method turnLeft() {
+		angle = math.normalizeAngle(angle + 20)
 		//console.println(angle)
 		//player.y(player.y() - 5)
-		//console.println("angle "+angle)
+		console.println("cos and sin " + math.cos(angle) + " " + math.sin(angle))
+		console.println("player- angle: "+angle+" pos: "+player.x()+" "+player.y())
+	}
+	method turnRight() {
+		angle = math.normalizeAngle(angle - 20)
+		//console.println(angle)
+		//player.y(player.y() - 5)
+		console.println("cos and sin " + math.cos(angle) + " " + math.sin(angle))
+		console.println("player- angle: "+angle+" pos: "+player.x()+" "+player.y())
+	}
 	
+	method forward() {
+		var newX = player.x() + 10*math.cos(angle)
+		var newY = player.y() + 10*math.sin(angle)
 		
+		
+		var cell = new Vec2(x=(newX/cell_size).truncate(0), y=(newY/cell_size).truncate(0))
+		if (level.get(cell.y()).get(cell.x()) == 0) {
+			player.x(newX)
+			player.y(newY)
+		}
+		
+		console.println("player- angle: "+angle+" pos: "+player.x()+" "+player.y())
 	}
 	
 	method getDistances(){
 		const listOfDistances = []
 		rays.forEach({ray =>
-			const newAngle = angle - (FOV/2).truncate(0)
+			//const ray = rays.get(0)
+			const newAngle =  math.normalizeAngle(angle - (FOV/2))
 			ray.x(player.x())
 			ray.y(player.y())
 			ray.setAngle(newAngle)
 			const distance = ray.cast()
+			//*math.cos(math.normalizeAngle(angle-newAngle)) // eliminar efect ojo de pez
 			//console.println(distance)
 			listOfDistances.add(distance)
 		})
@@ -61,7 +84,7 @@ object world {
 	}
 	
 	method makeRays() {
-		const initialAngle = angle - (FOV/2).truncate(0)
+		const initialAngle = math.normalizeAngle(angle - (FOV/2).truncate(0))
 		(0..raysCount).forEach({elem =>
 			rays.add(new Ray(angle=initialAngle, cell_size=cell_size, level=level, world_size=size, x=player.x(), y=player.y(), rayAngle=raysAngleIncrement*elem))
 		})
@@ -74,7 +97,7 @@ object abc {
 	var lines = []
 	
 	method init() {
-		game.width(50)
+		game.width(30)
   		game.height(60)
   		game.cellSize(8)
   		game.title("Juego")
@@ -83,12 +106,20 @@ object abc {
   		world.construirMapa()
   		world.makeRays()
   		
-		(49..0).forEach({elem => 
+		(29..0).forEach({elem => 
 			self.makeLine(elem)
 		}) 
 		
 		keyboard.d().onPressDo({ 
-			world.turn()
+			world.turnRight()
+			self.updateLines(world.getDistances())
+		})
+		keyboard.a().onPressDo({ 
+			world.turnLeft()
+			self.updateLines(world.getDistances())
+		})
+		keyboard.w().onPressDo({ 
+			world.forward()
 			self.updateLines(world.getDistances())
 		})
 		//game.onTick(50, "game", { self.updateLines(world.getDistances())})
@@ -97,9 +128,9 @@ object abc {
 	}
 	
 	method updateLines(listOfDistances) {
-		const wallHeight = 30
+		const wallHeight = 60
 		const projectionPlainDistance = (game.width() /2) / math.tan((world.getFov()/2).truncate(0))
-		(0..49).forEach({elem => 
+		(0..29).forEach({elem => 
 			const distance = listOfDistances.get(elem)
 			const projectedWallHeight = ((wallHeight / distance ) * projectionPlainDistance)
 			const imageNumber = projectedWallHeight.truncate(0).min(59)
@@ -148,104 +179,117 @@ class Ray {
 	var angle
 	
 	method setAngle(na){
-		angle = ((na + rayAngle) % 360).abs()
+		angle = math.normalizeAngle(na + rayAngle)
 	}
 	
 	method cast(){
-		var collidePoint = new Vec2(x=1, y=1)
-		var direction = new Vec2(x=1, y=1)
+		var collidePoint = new Vec2(x=x, y=y)
+		var abajo = false
+		var izquierda = false
 		var horizontalHit = false
 		var sourcePos = new Vec2(x=x, y=y)
 		
 		// Que direccion se mueve el rayo
-		if (angle > 180) {
-			direction.y(1)
+		if (angle < 180) {
+			abajo = true
 		}
 		if(angle > 90 && angle < 270){
-			direction.x(-1)
+			izquierda = true
 		}
 		
 		// Colision horizontal
 		collidePoint.y((y / cell_size).truncate(0) * cell_size)
 		
 		// Si apunta para abajo incrementamos una celda
-		if (direction.y() == 1) {
+		if (abajo) {
 			collidePoint.y(collidePoint.y() + cell_size)
 		}
 		
 		var adjacent = (collidePoint.y() - y) / (math.tan(angle)+0.01)
-		collidePoint.x(collidePoint.x() + adjacent)
+		collidePoint.x(x + adjacent)
 		
 		// Calculo de distancia de cada paso
 		var step = new Vec2(x=cell_size / (math.tan(angle)+0.01), y=cell_size)
 		
 		// Si apunta hacia arriba invertimos el paso en y
-		if(direction.y() == -1) {
+		if(!abajo) {
 			step.y(-step.y())
 		}
 		
 		// El paso en X coherente ????noentiendo
-		if ((direction.x() == -1 && step.x() > 0) || (direction.x() == 1 && step.x() < 0)){
+		if ((izquierda && step.x() > 0) || (!izquierda && step.x() < 0)){
 			step.x(-step.x())
 		}
 
 		var siguientePos = new Vec2(x=collidePoint.x(), y=collidePoint.y())
-		if(direction.y() == 1) {
+		if(!abajo) {
 			siguientePos.y(siguientePos.y() - 1)
 		}
 		
 		
-		var hCollidePoint = self.stepCollide(siguientePos, step)
+		var hCollidePoint = self.stepCollide(siguientePos, step, "hor")
 		
 		// Colision vertical
+		collidePoint.x(x)
+		collidePoint.y(y)
 		collidePoint.x((x / cell_size).truncate(0) * cell_size)
 		
 		// Si apunta hacia la derecha incrementamos una celda
-		if (direction.x() == -1) {
+		if (!izquierda) {
 			collidePoint.x(collidePoint.x() + cell_size)
 		}
 		var opposite  = (collidePoint.x() - x) * math.tan(angle)
-		collidePoint.y( y - opposite)
+		collidePoint.y( y + opposite)
 		// Calculo de distancia en cada paso
 		step = new Vec2(x=cell_size, y=cell_size * math.tan(angle))
 		
+		// Si apunta hacia la izquierda invertimos el paso en x
+		if (izquierda) {
+			step.x(-step.x())
+		}
+		
 		// El paso en Y coherente ????noentiendo
-		if ((direction.y() == -1 && step.y() > 0) || (direction.y() == 1 && step.y() < 0)){
+		if ((!abajo && step.y() > 0) || (abajo && step.y() < 0)){
 			step.y(-step.y())
 		}
 		siguientePos = new Vec2(x=collidePoint.x(), y=collidePoint.y())
-		if(direction.x() == -1) {
-			siguientePos.x(siguientePos.x() + 1)
+		if(izquierda) {
+			siguientePos.x(siguientePos.x() - 1)
 		}
-		var vCollidePoint = self.stepCollide(siguientePos, step)
+		var vCollidePoint = self.stepCollide(siguientePos, step, "ver")
 		
 		var hDistance = sourcePos.distanceWith(hCollidePoint)
 		var vDistance = sourcePos.distanceWith(vCollidePoint)
 
 		//console.println(hDistance)
 		if (hDistance < vDistance) {
-			//console.println(hDistance)
+			//console.println('win hor')
 			return hDistance
 		} else {
-			//console.println(vDistance)
+			//console.println('win ver')
 			return vDistance
 		}
 		
+		
 	}
 	
-	method stepCollide(siguiente, step) {
+	method stepCollide(siguiente, step, type) {
 	
 		const cell = new Vec2(
 			x=(siguiente.x().div(cell_size)).truncate(0),
 			y=(siguiente.y().div(cell_size)).truncate(0)
 		)
 		
-		if (self.collideWithAnyWall(cell)) {
+		
+		if (self.outsideWorld(cell) || self.collideWithAnyWall(cell)) {
+			//console.println(type+'| collide with: '+cell.x()+' '+cell.y())
 			return siguiente
 		} else {
+			//console.println(type+'| !!! not collide with: '+cell.x()+' '+cell.y())
 			return self.stepCollide(
 				new Vec2(x=siguiente.x() + step.x(), y=siguiente.y() + step.y()),
-				step
+				step,
+				type
 			)
 		}
 		
@@ -257,7 +301,7 @@ class Ray {
 	
 	method collideWithAnyWall(cell) {
 		//return true
-		return self.outsideWorld(cell) || (level.get(cell.y()).get(cell.x()) != 0)
+		return (level.get(cell.y()).get(cell.x()) != 0)
 	}
 }
 
